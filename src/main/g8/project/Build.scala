@@ -1,60 +1,38 @@
 import sbt._
 
 import Keys._
-import AndroidKeys._
-import AndroidNdkKeys._
+import Defaults._
+import sbtandroid.AndroidPlugin._
 
-object General {
-  // Some basic configuration
-  val settings = Defaults.defaultSettings ++ Seq (
+
+object AndroidBuild extends Build {
+
+  // Global settings
+  val globalSettings = Seq(
     name := "$name$",
     version := "0.1",
     versionCode := 0,
     scalaVersion := "$scala_version$",
-    platformName in Android := "android-$api_level$",
-    javacOptions ++= Seq("-encoding", "UTF-8", "-source", "1.6", "-target", "1.6")
+    platformName := "android-$api_level$",
+    keyalias := "change-me",
+    useProguard := false,
+    libraryDependencies ++= Seq(
+    ),
+
+    resolvers ++= Seq (
+    )
   )
 
-  // Default Proguard settings
-  lazy val proguardSettings = inConfig(Android) (Seq (
-    useProguard := $useProguard$,
-    proguardOptimizations += "-keep class $package$.** { *; }"
-  ))
+  // Main project (equivalent to defining something in `build.sbt`)
+  lazy val main = AndroidProject(
+    "main",                     // Project name
+    file("."),                  // Project base directory
+    settings=globalSettings)    // Project settings
 
-  // Example NDK settings
-  lazy val ndkSettings = AndroidNdk.settings ++ inConfig(Android) (Seq(
-    jniClasses := Seq(),
-    javahOutputFile := Some(new File("native.h"))
-  ))
-
-  // Full Android settings
-  lazy val fullAndroidSettings =
-    General.settings ++
-    AndroidProject.androidSettings ++
-    TypedResources.settings ++
-    proguardSettings ++
-    AndroidManifestGenerator.settings ++
-    AndroidMarketPublish.settings ++ Seq (
-      keyalias in Android := "change-me",
-      libraryDependencies += "org.scalatest" %% "scalatest" % "$scalatest_version$" % "test"
-    )
-}
-
-object AndroidBuild extends Build {
-  lazy val main = Project (
-    "main",
-    file("."),
-    settings = General.fullAndroidSettings ++ AndroidEclipseDefaults.settings
-  )
-
-  lazy val tests = Project (
-    "tests",
-    file("tests"),
-    settings = General.settings ++
-               AndroidEclipseDefaults.settings ++
-               AndroidTest.androidSettings ++
-               General.proguardSettings ++ Seq (
-      name := "$name$Tests"
-    )
-  ) dependsOn main
+  lazy val tests = AndroidTestProject(
+    "tests",                         // Project name
+    file("tests"),                   // Project base directory
+    settings=globalSettings)         // Project settings
+    .dependsOn(main % "provided")    // Main is "provided"
+    .settings(name := "MockaTests")  // Application name
 }
